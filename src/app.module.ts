@@ -5,6 +5,8 @@ import { AppService } from './app.service.js';
 import { UrlsModule } from './urls/urls.module.js';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { RedirectController } from './redirect/redirect.controller.js';
+import { RedirectModule } from './redirect/redirect.module.js';
 
 export const { ObserveModule, ObserveInstrument } = createObserveModule();
 
@@ -36,8 +38,9 @@ export const { ObserveModule, ObserveInstrument } = createObserveModule();
     }),
 
     UrlsModule,
+    RedirectModule
   ],
-  controllers: [AppController],
+  controllers: [AppController, RedirectController],
   providers: [AppService],
 })
 export class AppModule { }

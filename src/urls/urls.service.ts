@@ -7,12 +7,14 @@ import { CreateUrlDto } from './dto/create-url.dto.js';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { Url } from './entities/url.entity.js';
+import { RedisService } from '../redis/redis.service.js';
 
 @Injectable()
 export class UrlsService {
     constructor(
         @InjectRepository(Url)
         private readonly urlRepository: Repository<Url>,
+        private readonly redisService: RedisService
     ) { }
 
     getHealth() {
@@ -68,14 +70,41 @@ export class UrlsService {
     }
 
     async findByShortCode(shortCode: string) {
-        const url = this.urlRepository.findOne({
+        const cachedKey = `url:${shortCode}`
+
+        const cachedUrl = await this.redisService.get(cachedKey);
+
+        if (cachedUrl !== null) {
+            return JSON.parse(cachedUrl) as {
+                shortCode: string;
+                originalUrl: string;
+                expiresAt: string | null;
+            };
+
+        }
+
+
+        const url = await this.urlRepository.findOne({
             where: { shortCode }
         })
 
         if (!url) {
             return null
         }
-        return url;
+
+        const cacheValue = {
+            shortCode: url.shortCode,
+            originalUrl: url.originalUrl,
+            expiresAt: url.expiresAt?.toISOString() ?? null,
+        };
+
+        await this.redisService.set(
+            cachedKey,
+            JSON.stringify(cacheValue),
+            3600,
+        );
+
+        return cacheValue
     }
 
 }
